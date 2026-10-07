@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ひらがな うずまきマッチング</title>
+
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts for legible Japanese text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', 'Kosugi Maru', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        /* 3D Dynamic Card Styling */
+        .hiragana-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.4), 0 5px 10px rgba(0, 0, 0, 0.2);
+            touch-action: none;
+        }
+
+        .hiragana-card:active {
+            transform: scale(0.95);
+        }
+
+        /* Suction Animation Target Classes */
+        .sucking {
+            pointer-events: none;
+            transition: none !important;
+            z-index: 40 !important;
+        }
+
+        /* Custom Wave Pattern Overlay */
+        .ocean-bg {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 40%, #0369a1 100%);
+        }
+
+        /* Floating Animation for speaker button */
+        @keyframes pulse-gentle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        .pulse-speaker {
+            animation: pulse-gentle 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="ocean-bg h-screen w-screen relative flex flex-col justify-between items-center text-white select-none overflow-hidden">
+
+    <!-- 上部操作・提示エリア（渦巻き領域と完全に分離） -->
+    <div class="w-full max-w-4xl flex-1 flex flex-col items-center justify-between p-3 sm:p-4 z-10 min-h-0">
+        <!-- ヘッダー・視覚的進捗バー -->
+        <header class="w-full flex justify-between items-center">
+            <!-- 設定ボタン -->
+            <button id="btn-settings" class="bg-slate-800/80 hover:bg-slate-700 active:bg-slate-600 border-2 border-cyan-400/50 text-cyan-200 px-4 py-2 sm:px-5 sm:py-3 rounded-2xl flex items-center gap-2 text-lg sm:text-xl shadow-lg transition-all" aria-label="せってい">
+                <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span class="font-bold hidden sm:inline">せってい</span>
+            </button>
+
+            <!-- 視覚的進捗（星マークで残りの問題を明確化） -->
+            <div id="progress-container" class="flex items-center gap-1.5 sm:gap-2 bg-slate-900/80 px-4 py-2 sm:px-6 sm:py-3 rounded-full border border-cyan-500/30 shadow-inner">
+                <!-- JavaScriptで星アイコンを動的生成 -->
+            </div>
+
+            <!-- やりなおすボタン -->
+            <button id="btn-restart" class="bg-amber-600/80 hover:bg-amber-500 active:bg-amber-700 text-amber-100 p-2 sm:p-3 rounded-2xl border border-amber-400/40 shadow-lg transition-all" aria-label="やりなおす">
+                <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+            </button>
+        </header>
+
+        <!-- 音声再生ボタン（文字ラベルなしのシンプルな大型ボタン） -->
+        <div class="my-1 sm:my-2 flex flex-col items-center shrink-0">
+            <button id="btn-play-sound" class="pulse-speaker bg-gradient-to-b from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-white p-5 sm:p-6 rounded-full shadow-2xl border-4 border-cyan-200/80 flex items-center justify-center cursor-pointer transition-all focus:outline-none ring-4 ring-cyan-400/40" aria-label="おとをきく">
+                <svg class="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 平仮名カード提示エリア（2枚配置：渦巻き領域と重ならないよう配置） -->
+        <div id="cards-container" class="w-full grid grid-cols-2 gap-4 sm:gap-8 max-w-lg mx-auto mb-2 shrink-0">
+            <!-- 左カード -->
+            <div id="card-0" data-index="0" class="hiragana-card bg-gradient-to-b from-amber-100 to-amber-200 text-slate-900 rounded-3xl border-4 border-white aspect-[4/5] max-h-[26vh] sm:max-h-[30vh] flex items-center justify-center cursor-pointer transform hover:-translate-y-1 transition-transform mx-auto w-full">
+                <span class="card-text text-6xl sm:text-8xl font-black select-none pointer-events-none">あ</span>
+            </div>
+            <!-- 右カード -->
+            <div id="card-1" data-index="1" class="hiragana-card bg-gradient-to-b from-amber-100 to-amber-200 text-slate-900 rounded-3xl border-4 border-white aspect-[4/5] max-h-[26vh] sm:max-h-[30vh] flex items-center justify-center cursor-pointer transform hover:-translate-y-1 transition-transform mx-auto w-full">
+                <span class="card-text text-6xl sm:text-8xl font-black select-none pointer-events-none">い</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 下部の独立した斜めアングル水流渦巻きエリア -->
+    <div id="whirlpool-container" class="w-full h-[45vh] sm:h-[48vh] z-0 overflow-hidden relative border-t-2 border-cyan-500/30 bg-slate-950/30 shrink-0">
+        <canvas id="whirlpool-canvas" class="w-full h-full block"></canvas>
+    </div>
+
+    <!-- 【設定モーダル】 -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-800 border-2 border-cyan-400/60 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl">
+            <h2 class="text-3xl font-bold text-cyan-300 mb-6">せってい（難易度）</h2>
+            
+            <div class="space-y-4 text-left mb-8">
+                <label class="block text-slate-300 font-bold mb-2 text-lg">使う ひらがな</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button class="btn-group-select bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl border-2 border-cyan-300 active:scale-95 text-lg" data-group="a">
+                        あいうえお（あ行）
+                    </button>
+                    <button class="btn-group-select bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-4 rounded-xl border-2 border-slate-500 active:scale-95 text-lg" data-group="ka">
+                        か行まで（10文字）
+                    </button>
+                    <button class="btn-group-select bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-4 rounded-xl border-2 border-slate-500 active:scale-95 text-lg" data-group="sa">
+                        さ行まで（15文字）
+                    </button>
+                    <button class="btn-group-select bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-3 px-4 rounded-xl border-2 border-slate-500 active:scale-95 text-lg" data-group="all">
+                        すべての ひらがな
+                    </button>
+                </div>
+            </div>
+
+            <button id="btn-close-settings" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-black text-2xl py-4 rounded-2xl shadow-lg border-2 border-emerald-200 active:scale-98 transition-all">
+                OK （はじめる）
+            </button>
+        </div>
+    </div>
+
+    <!-- 【問題終了モーダル】間違えた時 -->
+    <div id="modal-wrong" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-4 border-rose-500/80 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl flex flex-col items-center">
+            <div class="w-24 h-24 bg-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mb-4 border-2 border-rose-400">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </div>
+            <h2 class="text-4xl font-black text-rose-300 mb-2">おしまい</h2>
+            <p class="text-slate-300 text-lg mb-6">もういちど 挑戦してみよう！</p>
+            <button id="btn-retry" class="w-full bg-rose-500 hover:bg-rose-400 text-white font-black text-2xl py-4 rounded-2xl shadow-lg border-2 border-rose-300 active:scale-98 transition-all">
+                もういちど
+            </button>
+        </div>
+    </div>
+
+    <!-- 【クリア達成モーダル】全問正解時 -->
+    <div id="modal-clear" class="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gradient-to-b from-slate-900 to-cyan-950 border-4 border-amber-400/80 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl flex flex-col items-center">
+            <div class="w-28 h-28 bg-amber-400/20 text-amber-300 rounded-full flex items-center justify-center mb-4 border-4 border-amber-300 animate-bounce">
+                <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+            </div>
+            <h2 class="text-5xl font-black text-amber-300 mb-2">できた！</h2>
+            <p class="text-cyan-200 text-xl mb-8">ぜんぶ すいこまれたよ！</p>
+            <button id="btn-next-game" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-2xl py-4 rounded-2xl shadow-lg border-2 border-amber-200 active:scale-98 transition-all">
+                つぎへ
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Web Audio API による効果音生成器（外部音声ファイル非依存）
+         */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // 正解音（明るいチャイム）
+            playCorrect() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+
+                osc1.frequency.setValueAtTime(523.25, now); // C5
+                osc1.frequency.setValueAtTime(659.25, now + 0.12); // E5
+                osc1.frequency.setValueAtTime(783.99, now + 0.24); // G5
+                osc1.frequency.setValueAtTime(1046.50, now + 0.36); // C6
+
+                osc2.frequency.setValueAtTime(523.25 * 1.005, now);
+                osc2.frequency.setValueAtTime(659.25 * 1.005, now + 0.12);
+                osc2.frequency.setValueAtTime(783.99 * 1.005, now + 0.24);
+                osc2.frequency.setValueAtTime(1046.50 * 1.005, now + 0.36);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.8);
+                osc2.stop(now + 0.8);
+            }
+
+            // 吸い込み音（2.1秒のゆったり水流スパイラル＋泡ポチャ音の重層化）
+            playSuck() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const duration = 2.1;
+
+                // 1. 低音の水流渦巻きベース音
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(360, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + duration);
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, now);
+                filter.frequency.linearRampToValueAtTime(120, now + duration);
+
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + duration);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + duration);
+
+                // 2. リアルな泡（ポチャッ・ポコポコ音）のオーバーレイ生成
+                const numBubbles = 18;
+                for (let i = 0; i < numBubbles; i++) {
+                    const bubbleTime = now + Math.random() * (duration - 0.15);
+                    const bOsc = this.ctx.createOscillator();
+                    const bGain = this.ctx.createGain();
+
+                    bOsc.type = 'sine';
+                    const startFreq = 220 + Math.random() * 600;
+                    const endFreq = startFreq * (1.3 + Math.random() * 0.6);
+
+                    bOsc.frequency.setValueAtTime(startFreq, bubbleTime);
+                    bOsc.frequency.exponentialRampToValueAtTime(endFreq, bubbleTime + 0.04);
+
+                    bGain.gain.setValueAtTime(0.001, bubbleTime);
+                    bGain.gain.linearRampToValueAtTime(0.07 + Math.random() * 0.05, bubbleTime + 0.01);
+                    bGain.gain.exponentialRampToValueAtTime(0.001, bubbleTime + 0.05);
+
+                    bOsc.connect(bGain);
+                    bGain.connect(this.ctx.destination);
+
+                    bOsc.start(bubbleTime);
+                    bOsc.stop(bubbleTime + 0.06);
+                }
+            }
+
+            // 不正解音（ブザー）
+            playWrong() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.setValueAtTime(130, now + 0.25);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            }
+        }
+
+        /**
+         * 日本語平仮名 音声読み上げ管理（Web Speech API）
+         */
+        class VoiceReader {
+            constructor() {
+                this.synth = window.speechSynthesis;
+                this.voice = null;
+                this.setupVoice();
+            }
+
+            setupVoice() {
+                if (!this.synth) return;
+                const updateVoice = () => {
+                    const voices = this.synth.getVoices();
+                    this.voice = voices.find(v => v.lang === 'ja-JP' || v.lang.startsWith('ja')) || voices[0];
+                };
+                updateVoice();
+                if (this.synth.onvoiceschanged !== undefined) {
+                    this.synth.onvoiceschanged = updateVoice;
+                }
+            }
+
+            speakChar(char, callback) {
+                if (!this.synth) {
+                    if (callback) callback();
+                    return;
+                }
+
+                this.synth.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(char);
+                if (this.voice) utterance.voice = this.voice;
+                utterance.lang = 'ja-JP';
+                utterance.rate = 0.85;
+                utterance.pitch = 1.1;
+
+                let finished = false;
+                const done = () => {
+                    if (!finished) {
+                        finished = true;
+                        if (callback) callback();
+                    }
+                };
+
+                utterance.onend = done;
+                utterance.onerror = done;
+
+                this.synth.speak(utterance);
+            }
+        }
+
+        /**
+         * 斜め上アングルの水流渦巻き Canvas グラフィックエンジン
+         */
+        class WhirlpoolEngine {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.particles = [];
+                this.numParticles = 220;
+                this.angleOffset = 0;
+                this.resize();
+
+                window.addEventListener('resize', () => this.resize());
+                this.initParticles();
+            }
+
+            resize() {
+                if (!this.canvas.parentElement) return;
+                this.width = this.canvas.width = this.canvas.parentElement.clientWidth || window.innerWidth;
+                this.height = this.canvas.height = this.canvas.parentElement.clientHeight || (window.innerHeight * 0.45);
+                this.centerX = this.width / 2;
+                this.centerY = this.height * 0.5;
+                this.radiusX = this.width * 0.45;
+                this.radiusY = this.height * 0.42;
+            }
+
+            initParticles() {
+                this.particles = [];
+                for (let i = 0; i < this.numParticles; i++) {
+                    this.particles.push({
+                        distanceRatio: Math.random(),
+                        angle: Math.random() * Math.PI * 2,
+                        speed: 0.01 + Math.random() * 0.02,
+                        size: 2 + Math.random() * 4.5,
+                        opacity: 0.3 + Math.random() * 0.7,
+                        isFoam: Math.random() > 0.4
+                    });
+                }
+            }
+
+            getCenterScreenPos() {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: rect.left + this.centerX,
+                    y: rect.top + this.centerY
+                };
+            }
+
+            render() {
+                if (!this.width || !this.height) this.resize();
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                this.angleOffset += 0.015;
+
+                // 1. 渦のベースグラデーション背景
+                const bgGradient = this.ctx.createRadialGradient(
+                    this.centerX, this.centerY, 10,
+                    this.centerX, this.centerY, Math.max(this.radiusX, this.radiusY)
+                );
+                bgGradient.addColorStop(0, '#020617');
+                bgGradient.addColorStop(0.18, '#082f49');
+                bgGradient.addColorStop(0.45, '#0284c7');
+                bgGradient.addColorStop(0.75, '#0369a1');
+                bgGradient.addColorStop(1, 'transparent');
+
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.ellipse(this.centerX, this.centerY, this.radiusX * 1.2, this.radiusY * 1.2, -0.05, 0, Math.PI * 2);
+                this.ctx.fillStyle = bgGradient;
+                this.ctx.fill();
+                this.ctx.restore();
+
+                // 2. 渦巻きの螺旋バンド描画
+                this.ctx.save();
+                this.ctx.translate(this.centerX, this.centerY);
+                this.ctx.scale(1, this.radiusY / this.radiusX);
+
+                const arms = 5;
+                for (let i = 0; i < arms; i++) {
+                    const armAngle = this.angleOffset + (i * Math.PI * 2 / arms);
+                    this.ctx.beginPath();
+                    for (let r = 20; r < this.radiusX; r += 5) {
+                        const theta = armAngle + (r * 0.02);
+                        const x = Math.cos(theta) * r;
+                        const y = Math.sin(theta) * r;
+                        if (r === 20) this.ctx.moveTo(x, y);
+                        else this.ctx.lineTo(x, y);
+                    }
+                    this.ctx.strokeStyle = i % 2 === 0 ? 'rgba(186, 230, 253, 0.25)' : 'rgba(56, 189, 248, 0.2)';
+                    this.ctx.lineWidth = 12;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.stroke();
+                }
+                this.ctx.restore();
+
+                // 3. 吸い込まれる水流粒子＆白い泡飛沫（フォーム）
+                for (let p of this.particles) {
+                    p.angle += p.speed * (1.8 - p.distanceRatio);
+                    p.distanceRatio -= 0.002;
+
+                    if (p.distanceRatio <= 0.02) {
+                        p.distanceRatio = 0.95 + Math.random() * 0.05;
+                        p.angle = Math.random() * Math.PI * 2;
+                    }
+
+                    const currentRx = this.radiusX * p.distanceRatio;
+                    const currentRy = this.radiusY * p.distanceRatio;
+                    const px = this.centerX + Math.cos(p.angle) * currentRx;
+                    const py = this.centerY + Math.sin(p.angle) * currentRy;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(px, py, p.size * (0.5 + p.distanceRatio * 0.5), 0, Math.PI * 2);
+
+                    if (p.isFoam) {
+                        this.ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity * p.distanceRatio})`;
+                    } else {
+                        this.ctx.fillStyle = `rgba(125, 211, 252, ${p.opacity * p.distanceRatio})`;
+                    }
+                    this.ctx.fill();
+                }
+
+                // 4. 中心穴
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.ellipse(this.centerX, this.centerY, 28, 16, 0, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#020617';
+                this.ctx.shadowColor = '#38bdf8';
+                this.ctx.shadowBlur = 15;
+                this.ctx.fill();
+                this.ctx.restore();
+
+                requestAnimationFrame(() => this.render());
+            }
+        }
+
+        const HIRAGANA_GROUPS = {
+            a: ['あ', 'い', 'う', 'え', 'お'],
+            ka: ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ'],
+            sa: ['あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ', 'さ', 'し', 'す', 'せ', 'そ'],
+            all: [
+                'あ','い','う','え','お',
+                'か','き','く','け','こ',
+                'さ','し','す','せ','そ',
+                'た','ち','つ','て','と',
+                'な','に','ぬ','ね','の',
+                'は','ひ','ふ','へ','ほ',
+                'ま','み','む','め','も',
+                'や','ゆ','よ',
+                'ら','り','る','れ','ろ',
+                'わ','を','ん'
+            ]
+        };
+
+        /**
+         * メインアプリケーション制御クラス
+         */
+        class App {
+            constructor() {
+                this.sound = new SoundFX();
+                this.voice = new VoiceReader();
+                this.canvas = document.getElementById('whirlpool-canvas');
+                this.whirlpool = new WhirlpoolEngine(this.canvas);
+
+                this.selectedGroup = 'a';
+                this.totalQuestions = 5;
+                this.currentQuestionIndex = 0;
+                this.activeStep = 0;
+                this.targetChar = '';
+                this.leftChar = '';
+                this.rightChar = '';
+                this.isAnimating = false;
+                this.isSpeaking = false;
+
+                this.initUI();
+                this.startNewGame();
+            }
+
+            initUI() {
+                // スピーカーボタン
+                document.getElementById('btn-play-sound').addEventListener('click', () => {
+                    this.speakCurrentTarget();
+                });
+
+                // カードのクリック/タッチイベント
+                document.getElementById('card-0').addEventListener('click', (e) => this.handleCardSelect(0, e.currentTarget));
+                document.getElementById('card-1').addEventListener('click', (e) => this.handleCardSelect(1, e.currentTarget));
+
+                // 設定モーダル制御
+                document.getElementById('btn-settings').addEventListener('click', () => {
+                    document.getElementById('modal-settings').classList.remove('hidden');
+                });
+
+                document.getElementById('btn-close-settings').addEventListener('click', () => {
+                    document.getElementById('modal-settings').classList.add('hidden');
+                    this.startNewGame();
+                });
+
+                // リスタートボタン
+                document.getElementById('btn-restart').addEventListener('click', () => {
+                    this.startNewGame();
+                });
+
+                // 再挑戦ボタン
+                document.getElementById('btn-retry').addEventListener('click', () => {
+                    document.getElementById('modal-wrong').classList.add('hidden');
+                    this.startNewGame();
+                });
+
+                // 次のゲームへ
+                document.getElementById('btn-next-game').addEventListener('click', () => {
+                    document.getElementById('modal-clear').classList.add('hidden');
+                    this.startNewGame();
+                });
+
+                // 難易度グループ選択UI
+                const groupBtns = document.querySelectorAll('.btn-group-select');
+                groupBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        groupBtns.forEach(b => {
+                            b.classList.remove('bg-cyan-600', 'border-cyan-300');
+                            b.classList.add('bg-slate-700', 'border-slate-500');
+                        });
+                        e.currentTarget.classList.remove('bg-slate-700', 'border-slate-500');
+                        e.currentTarget.classList.add('bg-cyan-600', 'border-cyan-300');
+                        this.selectedGroup = e.currentTarget.dataset.group;
+                    });
+                });
+
+                // Canvas描画スタート
+                this.whirlpool.render();
+            }
+
+            startNewGame() {
+                this.currentQuestionIndex = 0;
+                this.renderProgress();
+                this.setupNextQuestion();
+            }
+
+            renderProgress() {
+                const container = document.getElementById('progress-container');
+                container.innerHTML = '';
+                for (let i = 0; i < this.totalQuestions; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'w-7 h-7 flex items-center justify-center transition-all duration-300';
+                    if (i < this.currentQuestionIndex) {
+                        star.innerHTML = `<svg class="w-6 h-6 text-amber-400 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+                    } else if (i === this.currentQuestionIndex) {
+                        star.innerHTML = `<svg class="w-7 h-7 text-cyan-300 animate-pulse" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+                    } else {
+                        star.innerHTML = `<div class="w-3 h-3 rounded-full bg-slate-700 border border-slate-500"></div>`;
+                    }
+                    container.appendChild(star);
+                }
+            }
+
+            setupNextQuestion() {
+                this.isAnimating = false;
+                this.isSpeaking = false;
+                this.activeStep = 0;
+
+                // タッチ制御のロック解除
+                const cardsContainer = document.getElementById('cards-container');
+                const btnSound = document.getElementById('btn-play-sound');
+                if (cardsContainer) cardsContainer.style.pointerEvents = 'auto';
+                if (btnSound) btnSound.style.pointerEvents = 'auto';
+
+                const card0 = document.getElementById('card-0');
+                const card1 = document.getElementById('card-1');
+                [card0, card1].forEach(c => {
+                    c.style.visibility = 'visible';
+                    c.style.opacity = '1';
+                    c.style.transform = 'none';
+                    c.style.filter = 'none';
+                    c.style.position = 'relative';
+                    c.style.left = 'auto';
+                    c.style.top = 'auto';
+                    c.classList.remove('sucking');
+                });
+
+                // グループからランダムに2文字選択
+                const group = HIRAGANA_GROUPS[this.selectedGroup];
+                const shuffled = [...group].sort(() => Math.random() - 0.5);
+                this.leftChar = shuffled[0];
+                this.rightChar = shuffled[1];
+
+                // 2文字のうちどちらか一方をターゲットに選ぶ
+                this.targetChar = Math.random() < 0.5 ? this.leftChar : this.rightChar;
+
+                // UI更新
+                document.querySelector('#card-0 .card-text').textContent = this.leftChar;
+                document.querySelector('#card-1 .card-text').textContent = this.rightChar;
+
+                // 自動でターゲット音声を再生
+                setTimeout(() => {
+                    this.speakCurrentTarget();
+                }, 300);
+            }
+
+            speakCurrentTarget(callback) {
+                if (this.isSpeaking) return;
+                this.sound.init();
+                this.isSpeaking = true;
+
+                // 再生中はカードおよびスピーカーボタンのタッチ操作をロック
+                const cardsContainer = document.getElementById('cards-container');
+                const btnSound = document.getElementById('btn-play-sound');
+                if (cardsContainer) cardsContainer.style.pointerEvents = 'none';
+                if (btnSound) btnSound.style.pointerEvents = 'none';
+
+                let unlocked = false;
+                const unlock = () => {
+                    if (unlocked) return;
+                    unlocked = true;
+                    this.isSpeaking = false;
+                    if (cardsContainer) cardsContainer.style.pointerEvents = 'auto';
+                    if (btnSound) btnSound.style.pointerEvents = 'auto';
+                    if (callback && typeof callback === 'function') callback();
+                };
+
+                // セーフティタイマー（最大1.8秒で強制解除）
+                const safetyTimer = setTimeout(unlock, 1800);
+
+                this.voice.speakChar(this.targetChar, () => {
+                    clearTimeout(safetyTimer);
+                    unlock();
+                });
+            }
+
+            handleCardSelect(cardIdx, cardElem) {
+                if (this.isAnimating || this.isSpeaking) return;
+
+                const selectedChar = cardIdx === 0 ? this.leftChar : this.rightChar;
+
+                if (selectedChar === this.targetChar) {
+                    this.isAnimating = true;
+                    this.sound.playCorrect();
+
+                    this.animateSuckIntoWhirlpool(cardElem, () => {
+                        cardElem.style.visibility = 'hidden';
+
+                        if (this.activeStep === 0) {
+                            this.activeStep = 1;
+                            this.targetChar = (cardIdx === 0) ? this.rightChar : this.leftChar;
+                            this.isAnimating = false;
+
+                            setTimeout(() => {
+                                this.speakCurrentTarget();
+                            }, 500);
+                        } else {
+                            this.currentQuestionIndex++;
+                            this.renderProgress();
+
+                            if (this.currentQuestionIndex >= this.totalQuestions) {
+                                setTimeout(() => {
+                                    document.getElementById('modal-clear').classList.remove('hidden');
+                                }, 600);
+                            } else {
+                                setTimeout(() => {
+                                    this.setupNextQuestion();
+                                }, 700);
+                            }
+                        }
+                    });
+
+                } else {
+                    // 間違えた場合 -> そこで問題終了
+                    this.sound.playWrong();
+                    this.isAnimating = true;
+                    setTimeout(() => {
+                        document.getElementById('modal-wrong').classList.remove('hidden');
+                    }, 400);
+                }
+            }
+
+            // カードがゆっくりと渦潮の回転・パースに合わせて引き込まれるアニメーション
+            animateSuckIntoWhirlpool(cardElem, onComplete) {
+                this.sound.playSuck();
+
+                cardElem.classList.add('sucking');
+                const cardRect = cardElem.getBoundingClientRect();
+                const centerPos = this.whirlpool.getCenterScreenPos();
+
+                const startX = cardRect.left + cardRect.width / 2;
+                const startY = cardRect.top + cardRect.height / 2;
+                const targetX = centerPos.x;
+                const targetY = centerPos.y;
+
+                const dx = startX - targetX;
+                const dy = (startY - targetY) / 0.45;
+                const initialRadius = Math.hypot(dx, dy);
+                const initialAngle = Math.atan2(dy, dx);
+
+                const startTime = performance.now();
+                const duration = 2100;
+
+                const animateFrame = (now) => {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+
+                    const radiusRatio = Math.pow(1 - progress, 1.35);
+                    const currentRadius = initialRadius * radiusRatio;
+
+                    const currentAngle = initialAngle + progress * Math.PI * 7;
+
+                    const currentX = targetX + Math.cos(currentAngle) * currentRadius;
+                    const currentY = targetY + Math.sin(currentAngle) * currentRadius * 0.45;
+
+                    const tiltX = 55 * progress;
+                    const selfSpin = progress * 540;
+                    const scale = Math.max(0.05, (1 - progress * 0.88));
+
+                    const blurAmount = progress * 7;
+                    const opacity = Math.max(0, 1 - Math.pow(progress, 2.5));
+                    const brightness = Math.max(0.2, 1 - progress * 0.8);
+
+                    cardElem.style.position = 'fixed';
+                    cardElem.style.left = `${currentX - cardRect.width / 2}px`;
+                    cardElem.style.top = `${currentY - cardRect.height / 2}px`;
+                    cardElem.style.transform = `perspective(600px) rotateX(${tiltX}deg) rotateZ(${selfSpin}deg) scale(${scale})`;
+                    cardElem.style.filter = `blur(${blurAmount}px) brightness(${brightness})`;
+                    cardElem.style.opacity = opacity;
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animateFrame);
+                    } else {
+                        onComplete();
+                    }
+                };
+
+                requestAnimationFrame(animateFrame);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            window.app = new App();
+        });
+    </script>
+</body>
+</html>
